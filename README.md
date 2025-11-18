@@ -1,6 +1,7 @@
 # 神奇代码岛图表生成
 <h>示例</h>
 <div id="0eea6e101984404d82243fdd2a9c91bd" class="chart-container" style="width:900px; height:500px; "></div>
+<script type="text/javascript" src="https://assets.pyecharts.org/assets/v5/echarts.min.js"></script>
 <script>
         var chart_0eea6e101984404d82243fdd2a9c91bd = echarts.init(
             document.getElementById('0eea6e101984404d82243fdd2a9c91bd')， 'white'， {renderer: 'canvas'， locale: 'ZH'});
