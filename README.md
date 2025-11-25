@@ -4,13 +4,9 @@
 - 使用*Pyecharts*渲染，输出为 .*html* 文件，功能较多
 - 运行文件为***main.py***
 ## 效果展示
-输入界面
-![输入界面](/input.png "Image by VSCode")
-渲染效果
-![渲染效果](/preview.png "Image by Pyecharts snapshot")
+![渲染效果](/IOsnapst.png)
 ## 代码展示
 ```
-Python
 # -----------------------------------------------------
 # Copyright ©2025 by 不知名的屑Box. All Rights Reserved.
 # -----------------------------------------------------
