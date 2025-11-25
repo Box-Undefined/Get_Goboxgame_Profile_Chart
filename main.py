@@ -1,61 +1,152 @@
-# -----------------------------------------------------
+# ---------------------------------------------------------------------------------------------
 # Copyright ©2025 by 不知名的屑Box. All Rights Reserved.
-# -----------------------------------------------------
-
+# Licensed under the MIT License. See LICENSE in the project root for license information.
+# ---------------------------------------------------------------------------------------------
 from pyecharts.charts import Radar
 from pyecharts import options as opts
-from pyecharts.globals import CurrentConfig
 
-from requests import *
-import os, json
+import tkinter as tk
+from tkinter import messagebox
+
+import os, json, sys, requests
 
 # Input ID number to get your PROFILE url
-while(1):
+def get_ids_via_tk():
+    root = tk.Tk()
+    root.title("神奇代码岛(dao3.fun) - 输入用户 ID")
+    root.resizable(False, False)
     try:
-        print("\033[38;5;230m欢迎使用神奇代码岛(dao3.fun)个人数据分析生成器\033[0;0m")
-        ID1 = int(input('请输入你的 ' + "\033[38;5;220mID\033[0;0m" + ' \n'))
-        if ID1 == 0: ID1 = 1/0
-        ID2 = int(input('请输入你将要对比的 ' + "\033[38;5;220mID\033[0;0m" + ' （无请输入0）\n'))
-        break
-    except: 
-        os.system('cls')
-        print("\033[38;5;9m请输入正确的ID\033[0;0m")
-        
+        root.geometry("360x150")
+        root.eval('tk::PlaceWindow %s center' % root.winfo_toplevel())
+    except Exception:
+        pass
+
+    tk.Label(root, text="主用户 ID（必填，正整数）:", anchor="w").grid(row=0, column=0, padx=12, pady=(12, 2), sticky="w")
+    id1_var = tk.StringVar()
+    entry_id1 = tk.Entry(root, textvariable=id1_var, width=30)
+    entry_id1.grid(row=1, column=0, padx=12, sticky="w")
+
+    entry_id1.focus_set()
+    tk.Label(root, text="对比用户 ID（可选，留空或填 0 表示不对比）:", anchor="w").grid(row=2, column=0, padx=12, pady=(10, 2), sticky="w")
+    id2_var = tk.StringVar()
+    entry_id2 = tk.Entry(root, textvariable=id2_var, width=30)
+    entry_id2.grid(row=3, column=0, padx=12, sticky="w")
+
+    def validate_digits(P):
+        return P.isdigit() or P == ""
+    vcmd = (root.register(validate_digits), '%P')
+    entry_id1.config(validate="key", validatecommand=vcmd)
+    entry_id2.config(validate="key", validatecommand=vcmd)
+
+    result = {}
+
+    def on_ok(event=None):
+        v1 = id1_var.get().strip()
+        v2 = id2_var.get().strip()
+        if v1 == "":
+            messagebox.showerror("输入错误", "主用户 ID 为必填项。")
+            return
+        try:
+            i1 = int(v1)
+            if i1 <= 0:
+                raise ValueError("主用户 ID 必须为正整数。")
+        except Exception as e:
+            messagebox.showerror("输入错误", f"主用户 ID 无效：{e}")
+            return
+        if v2 == "" or v2 == "0":
+            i2 = 0
+        else:
+            try:
+                i2 = int(v2)
+                if i2 < 0:
+                    raise ValueError("对比 ID 不能为负数。")
+            except Exception as e:
+                messagebox.showerror("输入错误", f"对比用户 ID 无效：{e}")
+                return
+        result['id1'] = i1
+        result['id2'] = i2
+        root.destroy()
+    def on_cancel():
+        if messagebox.askyesno("取消", "确定要退出吗？"):
+            root.destroy()
+            result['cancel'] = True
+
+    btn_frame = tk.Frame(root)
+    btn_frame.grid(row=4, column=0, pady=12)
+    ok_btn = tk.Button(btn_frame, text="确定", width=10, command=on_ok)
+    ok_btn.pack(side="left", padx=6)
+    cancel_btn = tk.Button(btn_frame, text="取消", width=10, command=on_cancel)
+    cancel_btn.pack(side="left", padx=6)
+
+    root.bind("<Return>", on_ok)
+    root.bind("<Escape>", lambda e: on_cancel())
+
+    root.mainloop()
+    return result
+
+_res = get_ids_via_tk()
+
+if not _res or _res.get('cancel'):
+    print("已取消。")
+    raise SystemExit(0)
+
+ID1 = _res['id1']
+ID2 = _res['id2']
 
 # Max NUMBER
 def qianli_num(m, n, x):
     m = float(m)
     n = float(n)
     x = float(x)
-    return max(int(x*(1+0.5*((n-m*x)/(n+m*x)))), x)
+    denom = (n + m * x)
+    if abs(denom) < 1e-9:
+        return int(x)
+    val = int(x * (1 + 0.5 * ((n - m * x) / denom)))
+    return max(val, int(x))
+
+def get_json(session, url, timeout=8):
+    resp = session.get(url, timeout=timeout)
+    resp.raise_for_status()
+    return resp.json()
+
 def get_info(ID):
     # Get your Info
-    DAO3 = {
-        "followers": json.loads(get("https://code-api-pc.dao3.fun/follow/relation-info/"+str(ID)).text), 
-        "infos": json.loads(get("https://code-api-pc.dao3.fun/user/profile/"+str(ID)).text), 
-        "maps": json.loads(get("https://code-api-pc.dao3.fun/user/experience?limit=32&offset=0&userId="+str(ID)).text),
-        "models": json.loads(get("https://code-api-pc.dao3.fun/user/models?limit=32&offset=0&userId="+str(ID)).text)
+    s = requests.Session()
+    try:
+        DAO3 = {
+            'followers': get_json(s, f"https://code-api-pc.dao3.fun/follow/relation-info/{ID}"),
+            'infos': get_json(s, f"https://code-api-pc.dao3.fun/user/profile/{ID}"),
+            'maps': get_json(s, f"https://code-api-pc.dao3.fun/user/experience?limit=32&offset=0&userId={ID}"),
+            'models': get_json(s, f"https://code-api-pc.dao3.fun/user/models?limit=32&offset=0&userId={ID}")
         }
+    finally:
+        s.close()
 
     # Dao3 simple infos
     INFO = {
-        "followers": DAO3["followers"]['data']["followerNum"],
-        "following": DAO3["followers"]['data']["followingNum"],
-        "friends": DAO3["followers"]['data']["friendsNum"],
-        "name": DAO3["infos"]['data']["nickname"],
-        "maps": len(DAO3["maps"]['data']["rows"]),
-        "models": len(DAO3["models"]['data']["rows"]),
+        "followers": DAO3["followers"]['data'].get("followerNum", 0),
+        "following": DAO3["followers"]['data'].get("followingNum", 0),
+        "friends": DAO3["followers"]['data'].get("friendsNum", 0),
+        "name": DAO3["infos"]['data'].get("nickname", f"ID_{ID}"),
+        "maps": len(DAO3["maps"]['data'].get("rows", [])),
+        "models": len(DAO3["models"]['data'].get("rows", [])),
         "count": 0,
     }
-    try:INFO["best_map"] = {"name": DAO3["maps"]['data']["rows"][0]["name"], "click": DAO3["maps"]['data']["rows"][0]["playCount"]}
-    except:INFO["best_map"] = {"name": '"暂无数据"', "click": 0}
-    try:INFO["best_model"] = {"name": DAO3["models"]['data']["rows"][0]["title"], "click": DAO3["models"]['data']["rows"][0]["viewCount"]}
-    except:INFO["best_model"] = {"name": '"暂无数据"', "click": 0}
+    try:
+        first_map = DAO3["maps"]['data'].get("rows", [])[0]
+        INFO["best_map"] = {"name": first_map.get("name", '"暂无数据"'), "click": first_map.get("playCount", 0)}
+    except Exception:
+        INFO["best_map"] = {"name": '"暂无数据"', "click": 0}
+    try:
+        first_model = DAO3["models"]['data'].get("rows", [])[0]
+        INFO["best_model"] = {"name": first_model.get("title", '"暂无数据"'), "click": first_model.get("viewCount", 0)}
+    except Exception:
+        INFO["best_model"] = {"name": '"暂无数据"', "click": 0}
 
-    for i in DAO3["models"]['data']["rows"]:
-        INFO["count"] += i["viewCount"]
-    for j in DAO3["maps"]['data']["rows"]:
-        INFO["count"] += j["playCount"]
+    for i in DAO3["models"]['data'].get("rows", []):
+        INFO["count"] += i.get("viewCount", 0)
+    for j in DAO3["maps"]['data'].get("rows", []):
+        INFO["count"] += j.get("playCount", 0)
 
     # Ready to set
     datas = [
@@ -87,13 +178,13 @@ data1 = get_info(ID1)
 
 # Build a CHART
 radar_schema = [
-    {"name": "粉丝",     "max": qianli_num(data1[1]["maps"]+data1[1]['models'], data1[1]['count'], data1[1]['followers']),                           "min": 0},
-    {"name": "关注",     "max": data1[1]["following"]*1.1,                                                                                 "min": 0},
-    {"name": "好友",     "max": data1[1]['followers']/2,                                                                                   "min": 0},
-    {"name": "地图总数",  "max": max(50, data1[1]['maps']),                                                                                 "min": 0},
-    {"name": f"最佳地图游玩量",      "max": int(float(data1[1]['best_map']['click'])*1.1),                     "min": 0},
-    {"name": "模型总数",  "max": max(50, data1[1]['models']),                                                               "min": 0},
-    {"name": f"最佳模型浏览量",    "max": int(float(data1[1]["best_model"]["click"]*1.1)),                   "min": 0}
+    {"name": "粉丝",     "max": qianli_num(data1[1]["maps"]+data1[1]['models'], data1[1]['count'], data1[1]['followers']),   "min": 0},
+    {"name": "关注",     "max": data1[1]["following"]*1.1,                                                                   "min": 0},
+    {"name": "好友",     "max": data1[1]['followers']/2,                                                                     "min": 0},
+    {"name": "地图总数",  "max": max(50, data1[1]['maps']),                                                                   "min": 0},
+    {"name": "最佳地图游玩量",      "max": int(float(data1[1]['best_map']['click'])*1.1),                                      "min": 0},
+    {"name": "模型总数",  "max": max(50, data1[1]['models']),                                                                 "min": 0},
+    {"name": "最佳模型浏览量",    "max": int(float(data1[1]["best_model"]["click"]*1.1)),                                      "min": 0}
 ]
 radar = (
     # 雷达图
