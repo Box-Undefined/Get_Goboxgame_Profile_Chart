@@ -9,7 +9,8 @@
 渲染效果
 ![渲染效果](/preview.png "Image by Pyecharts snapshot")
 ## 代码展示
-``` Python
+```
+Python
 # -----------------------------------------------------
 # Copyright ©2025 by 不知名的屑Box. All Rights Reserved.
 # -----------------------------------------------------
